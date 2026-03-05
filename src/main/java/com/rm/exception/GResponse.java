@@ -1,4 +1,4 @@
-package com.rm.dto;
+package com.rm.exception;
 
 import org.springframework.http.HttpStatus;
 
