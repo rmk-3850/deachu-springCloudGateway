@@ -1,0 +1,5 @@
+.git
+.gradle
+node_modules
+build/*
+!build/libs/*.jar

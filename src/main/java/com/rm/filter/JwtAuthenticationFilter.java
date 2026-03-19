@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,47 +43,40 @@ public class JwtAuthenticationFilter implements WebFilter{
 		
 		String token=process.resolveToken(request);
 		
-		if(token==null) {
+		if(token==null || token.isBlank()) {
 			return chain.filter(exchange);
 		}
 		
-		if(!process.isValidToken(token)) return onError(exchange, ErrorCode.INVALID_TOKEN);
-		
+		if(!process.isValidToken(token)) {			
+			return onError(exchange, ErrorCode.INVALID_TOKEN);
+		}
 		Claims claims=process.getClaims(token);
-		String uid=claims.getSubject();
+		String id=claims.getSubject();
 		
-		List<String> list=switch (claims.get("roles")){
-			case null -> List.of();
-			case List<?> rawList -> {
-				if(rawList.stream().allMatch(String.class::isInstance)){
-					yield rawList.stream().map(String.class::cast).toList();
-				}
-				yield null;
-			}	
-			default -> null;
-		};
+		List<String> list = claims.get("roles", List.class);
 		
 		if(list==null) return onError(exchange, ErrorCode.INVALID_TOKEN);
 
 		String roles=(list.isEmpty()) ? "" : String.join(",", list);
 		
-        List<GrantedAuthority> authorities = list.stream()
+		List<GrantedAuthority> authorities = list.stream()
 			.<GrantedAuthority>map(SimpleGrantedAuthority::new)
 			.toList();
 
-        Authentication auth =
-                new UsernamePasswordAuthenticationToken(uid, null, authorities);
+		Authentication auth =
+				new UsernamePasswordAuthenticationToken(id, null, authorities);
 		
 		ServerHttpRequest modifiedRequest=exchange.getRequest().mutate()
 				.headers(h->{
 					h.remove("X-User-Uid");
 					h.remove("X-User-Roles");
-					h.add("X-User-Uid", uid);
+					h.add("X-User-Uid", id);
 					h.add("X-User-Roles", roles);
 				})
 				.build();
 		return chain.filter(exchange.mutate().request(modifiedRequest).build())
 				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
+		
 	}
 	
 	private Mono<Void> onError(ServerWebExchange exchange,ErrorCode errorCode){ 
@@ -90,6 +84,14 @@ public class JwtAuthenticationFilter implements WebFilter{
 		GResponse gres=GResponse.fail(errorCode, exchange.getRequest().getPath().value());
 		response.setStatusCode(gres.status());
 		response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+		ResponseCookie deleteCookie = ResponseCookie.from("accessToken","")
+			.httpOnly(true)
+			.secure(true)
+			.sameSite("None")
+			.path("/")
+			.build();
+		response.addCookie(deleteCookie);
 		try {
 			byte[] bytes=objectMapper.writeValueAsBytes(gres);
 			DataBuffer buffer= response.bufferFactory().wrap(bytes);

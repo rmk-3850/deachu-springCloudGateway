@@ -4,14 +4,15 @@ import java.security.Key;
 import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-
+import lombok.extern.log4j.Log4j2;
+@Log4j2
 @Component
 public class JwtTokenProcess {
 	private final Key key;
@@ -27,25 +28,34 @@ public class JwtTokenProcess {
 				.setSigningKey(key)
 				.build()
 				.parseClaimsJws(token);
+			log.info("JWT verified: {}", token);
 			return true;
 		} catch (Exception e) {
+			log.error("JWT verify failed", e);
 			return false;
 		}
 	}
 	
 	public String resolveToken(ServerHttpRequest request) {
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (authHeader!=null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
+		HttpCookie cookie = request.getCookies().getFirst("accessToken");
+		if (cookie != null) {
+			return cookie.getValue();
+		}
         return null;
     }
 	
 	public Claims getClaims(String token) {
-		return Jwts.parserBuilder()
-				.setSigningKey(key)
-				.build()
-				.parseClaimsJws(token)
-				.getBody();
+		Claims claims = null;
+		try {
+			claims = Jwts.parserBuilder()
+			.setSigningKey(key)
+			.build()
+			.parseClaimsJws(token)
+			.getBody();
+			log.info("JWT verified: {}", claims.getSubject());
+		} catch (Exception e) {
+			log.error("JWT verify failed", e);
+		}
+		return claims;
 	}
 }

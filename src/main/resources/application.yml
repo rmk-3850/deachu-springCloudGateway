@@ -1,20 +1,30 @@
 server:
   port: '8080'
 jwt:
-  secret: vQfU4V/l8+6RT35cOe/RqVbup1nA3YhoCywlEfCkFOA=
+  secret: ${jwt_secret}
 spring:
   cloud:
     gateway:
       routes:
+      - id: oauth
+        uri: http://userservice:8081
+        predicates:
+        - Path=/oauth2/**,/login/oauth2/**
+        filters:
+        - PreserveHostHeader
       - id: user
-        uri: http://localhost:8081
+        uri: http://userservice:8081
         predicates:
         - Path=/api/user/**
         filters:
         - StripPrefix=2
       - id: piece
-        uri: http://localhost:8082
+        uri: http://pieceservice:8082
         predicates:
         - Path=/api/piece/**
         filters:
         - StripPrefix=2
+logging:
+  level:
+    '[reactor.netty]': DEBUG
+    '[org.springframework.web]': DEBUG
