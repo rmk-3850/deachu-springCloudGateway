@@ -10,6 +10,7 @@ import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -38,7 +39,21 @@ public class SecurityConfig {
 	public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http,JwtAuthenticationFilter jwtAuthenticationFilter) {
 		return http
 			.cors(cors->cors.configurationSource(corsConfigurationSource()))
-			.csrf(csrf->csrf.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse()))
+			.csrf(csrf->csrf
+				.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
+				.requireCsrfProtectionMatcher(exchange -> {
+					String path = exchange.getRequest().getPath().value();
+					// public 경로는 CSRF 검증 제외
+					if (path.startsWith("/api/user/public/") ||
+						path.startsWith("/api/piece/public/") ||
+						path.startsWith("/oauth2/") ||
+						path.startsWith("/login/oauth2/")) {
+						return ServerWebExchangeMatcher.MatchResult.notMatch();
+					}
+					// 나머지는 기본 CSRF 검증 (POST, PUT, DELETE, PATCH)
+					return ServerWebExchangeMatcher.MatchResult.match();
+				})
+			)
 			.formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
 			.authorizeExchange(e->e
