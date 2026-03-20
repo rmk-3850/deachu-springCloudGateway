@@ -5,7 +5,6 @@ import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -38,7 +37,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http,JwtAuthenticationFilter jwtAuthenticationFilter) {
 		return http
-			.cors(Customizer.withDefaults())
+			.cors(cors->cors.configurationSource(corsConfigurationSource()))
 			.csrf(csrf->csrf.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse()))
 			.formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
