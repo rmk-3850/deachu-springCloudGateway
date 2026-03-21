@@ -52,7 +52,8 @@ public class SecurityConfig {
 					HttpMethod method = exchange.getRequest().getMethod();
 				
 					// 1. GET, HEAD, OPTIONS 등의 안전한 메서드는 CSRF 검사 제외
-					if (method == HttpMethod.OPTIONS || method == HttpMethod.HEAD || method == HttpMethod.TRACE) {
+					if (method == HttpMethod.GET ||method == HttpMethod.OPTIONS ||
+						method == HttpMethod.HEAD || method == HttpMethod.TRACE) {
 						return ServerWebExchangeMatcher.MatchResult.notMatch();
 					}
 				
