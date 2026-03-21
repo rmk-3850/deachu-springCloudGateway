@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 public class CsrfController {
-    @GetMapping("/csrf")
+    @GetMapping("/api/csrf")
     public Mono<Void> csrf(ServerWebExchange exchange) {
         Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
         return csrfToken != null ? csrfToken.then() : Mono.empty();

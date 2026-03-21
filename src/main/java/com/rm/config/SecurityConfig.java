@@ -73,9 +73,9 @@ public class SecurityConfig {
             .httpBasic(basic -> basic.disable())
 			.authorizeExchange(e->e
 				.pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-				.pathMatchers("/csrf").permitAll()
 				.pathMatchers("/oauth2/**").permitAll()
 				.pathMatchers("/login/oauth2/**").permitAll()
+				.pathMatchers("/api/csrf").permitAll()
 	            .pathMatchers("/api/user/public/**").permitAll()
 	            .pathMatchers("/api/user/admin/**").hasRole("ADMIN")
 				.pathMatchers("/api/piece/public/**").permitAll()
