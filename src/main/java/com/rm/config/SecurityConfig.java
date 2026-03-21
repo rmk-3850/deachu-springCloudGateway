@@ -73,6 +73,7 @@ public class SecurityConfig {
             .httpBasic(basic -> basic.disable())
 			.authorizeExchange(e->e
 				.pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+				.pathMatchers("/csrf").permitAll()
 				.pathMatchers("/oauth2/**").permitAll()
 				.pathMatchers("/login/oauth2/**").permitAll()
 	            .pathMatchers("/api/user/public/**").permitAll()
@@ -91,11 +92,8 @@ public class SecurityConfig {
 			.addFilterAfter((exchange, chain) ->
 			chain.filter(exchange)
 				.then(Mono.defer(() -> {
-					if ("/signin".equals(exchange.getRequest().getURI().getPath())) {
-						Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-						return csrfToken != null ? csrfToken.then() : Mono.empty();
-					}
-					return Mono.empty();
+					Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+            		return csrfToken != null ? csrfToken.then() : Mono.empty();
 				}))
 				, SecurityWebFiltersOrder.CSRF
 			)
