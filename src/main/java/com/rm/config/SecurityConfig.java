@@ -89,14 +89,11 @@ public class SecurityConfig {
 					return exchange.getResponse().setComplete();
 				})
 			)
-			.addFilterAfter((exchange, chain) ->
-			chain.filter(exchange)
-				.then(Mono.defer(() -> {
-					Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-            		return csrfToken != null ? csrfToken.then() : Mono.empty();
-				}))
-				, SecurityWebFiltersOrder.CSRF
-			)
+			.addFilterBefore((exchange, chain) -> {
+				Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+				return (csrfToken != null ? csrfToken.then() : Mono.empty())
+						.then(chain.filter(exchange));
+			}, SecurityWebFiltersOrder.CSRF)
 			.addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 			.build();
 	}
