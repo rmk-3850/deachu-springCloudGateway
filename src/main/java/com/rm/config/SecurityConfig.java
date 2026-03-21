@@ -11,6 +11,7 @@ import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
+import org.springframework.security.web.server.csrf.CsrfToken;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import com.rm.filter.JwtAuthenticationFilter;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @Configuration
@@ -50,8 +52,7 @@ public class SecurityConfig {
 					HttpMethod method = exchange.getRequest().getMethod();
 				
 					// 1. GET, HEAD, OPTIONS 등의 안전한 메서드는 CSRF 검사 제외
-					if (method == HttpMethod.GET || method == HttpMethod.OPTIONS || 
-						method == HttpMethod.HEAD || method == HttpMethod.TRACE) {
+					if (method == HttpMethod.OPTIONS || method == HttpMethod.HEAD || method == HttpMethod.TRACE) {
 						return ServerWebExchangeMatcher.MatchResult.notMatch();
 					}
 				
@@ -85,6 +86,17 @@ public class SecurityConfig {
 					log.error(ex.getMessage());
 					return exchange.getResponse().setComplete();
 				})
+			)
+			.addFilterAfter((exchange, chain) ->
+			chain.filter(exchange)
+				.then(Mono.defer(() -> {
+					if ("/signin".equals(exchange.getRequest().getURI().getPath())) {
+						Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+						return csrfToken != null ? csrfToken.then() : Mono.empty();
+					}
+					return Mono.empty();
+				}))
+				, SecurityWebFiltersOrder.CSRF
 			)
 			.addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 			.build();
