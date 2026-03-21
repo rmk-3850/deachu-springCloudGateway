@@ -24,9 +24,9 @@ import com.rm.exception.GResponse;
 import com.rm.jwt.JwtTokenProcess;
 
 import io.jsonwebtoken.Claims;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
-@Log4j2
+@Slf4j
 @Component
 public class JwtAuthenticationFilter implements WebFilter{
 	private final JwtTokenProcess process;

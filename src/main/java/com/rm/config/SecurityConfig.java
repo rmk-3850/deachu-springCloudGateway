@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
@@ -17,6 +18,9 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import com.rm.filter.JwtAuthenticationFilter;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
@@ -43,14 +47,23 @@ public class SecurityConfig {
 				.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
 				.requireCsrfProtectionMatcher(exchange -> {
 					String path = exchange.getRequest().getPath().value();
-					// public 경로는 CSRF 검증 제외
-					if (path.startsWith("/api/user/public/") ||
-						path.startsWith("/api/piece/public/") ||
+					HttpMethod method = exchange.getRequest().getMethod();
+				
+					// 1. GET, HEAD, OPTIONS 등의 안전한 메서드는 CSRF 검사 제외
+					if (method == HttpMethod.GET || method == HttpMethod.OPTIONS || 
+						method == HttpMethod.HEAD || method == HttpMethod.TRACE) {
+						return ServerWebExchangeMatcher.MatchResult.notMatch();
+					}
+				
+					// 2. 화이트리스트(Public API) 경로도 CSRF 검사 제외 (로그인, 회원가입 등)
+					if (path.startsWith("/api/user/public/") || 
+						path.startsWith("/api/piece/public/") || 
 						path.startsWith("/oauth2/") ||
 						path.startsWith("/login/oauth2/")) {
 						return ServerWebExchangeMatcher.MatchResult.notMatch();
 					}
-					// 나머지는 기본 CSRF 검증 (POST, PUT, DELETE, PATCH)
+				
+					// 3. 그 외의 모든 POST, PUT, DELETE 요청은 CSRF 토큰 검사 수행
 					return ServerWebExchangeMatcher.MatchResult.match();
 				})
 			)
@@ -69,6 +82,7 @@ public class SecurityConfig {
 			.exceptionHandling(e -> 
 				e.authenticationEntryPoint((exchange, ex) -> {
                     exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+					log.error(ex.getMessage());
 					return exchange.getResponse().setComplete();
 				})
 			)
