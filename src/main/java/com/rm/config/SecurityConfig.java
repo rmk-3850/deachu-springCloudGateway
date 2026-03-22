@@ -12,10 +12,12 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
+import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.server.WebFilter;
 
 import com.rm.filter.JwtAuthenticationFilter;
 
@@ -42,11 +44,24 @@ public class SecurityConfig {
 		return source;
 	}
 	@Bean
+	public WebFilter csrfCookieWebFilter() {
+		return (exchange, chain) -> {
+			Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+			if (csrfToken != null) {
+				return csrfToken.doOnSuccess(token -> {
+					// 토큰을 구독해서 실제로 쿠키에 write되도록 강제
+				}).then(chain.filter(exchange));
+			}
+			return chain.filter(exchange);
+		};
+	}
+	@Bean
 	public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http,JwtAuthenticationFilter jwtAuthenticationFilter) {
 		return http
 			.cors(cors->cors.configurationSource(corsConfigurationSource()))
 			.csrf(csrf->csrf
 				.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
+				.csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
 				.requireCsrfProtectionMatcher(exchange -> {
 					String path = exchange.getRequest().getPath().value();
 					HttpMethod method = exchange.getRequest().getMethod();
@@ -89,6 +104,7 @@ public class SecurityConfig {
 					return exchange.getResponse().setComplete();
 				})
 			)
+			.addFilterAt(csrfCookieWebFilter(), SecurityWebFiltersOrder.CSRF)
 			.addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 			.build();
 	}
