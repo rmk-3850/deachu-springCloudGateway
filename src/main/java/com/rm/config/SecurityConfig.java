@@ -74,6 +74,7 @@ public class SecurityConfig {
 				
 					// 2. 화이트리스트(Public API) 경로도 CSRF 검사 제외 (로그인, 회원가입 등)
 					if (path.startsWith("/api/user/public/") || 
+						path.startsWith("/ws/**") ||
 						path.startsWith("/api/piece/public/") || 
 						path.startsWith("/oauth2/") ||
 						path.startsWith("/login/oauth2/")) {
@@ -88,6 +89,7 @@ public class SecurityConfig {
             .httpBasic(basic -> basic.disable())
 			.authorizeExchange(e->e
 				.pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+				.pathMatchers("/ws/**").permitAll()
 				.pathMatchers("/oauth2/**").permitAll()
 				.pathMatchers("/login/oauth2/**").permitAll()
 				.pathMatchers("/api/csrf").permitAll()
